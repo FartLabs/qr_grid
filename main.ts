@@ -46,7 +46,6 @@ async function generate(options: GenerateOptions) {
   const codes = await Promise.all(
     Array.from({ length: options.amount }, (_, i) => options.qrcode(i)),
   );
-  // TODO: Add CSS grid settings.
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
