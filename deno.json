@@ -4,6 +4,7 @@
     "dev": "deno run --allow-net --watch main.ts"
   },
   "imports": {
+    "qr-scanner": "npm:qr-scanner@^1.4.2",
     "qrcode": "https://deno.land/x/qrcode@v2.0.0/mod.ts"
   }
 }
