@@ -1,0 +1,9 @@
+{
+  "lock": false,
+  "tasks": {
+    "dev": "deno run --allow-net --watch main.ts"
+  },
+  "imports": {
+    "qrcode": "https://deno.land/x/qrcode@v2.0.0/mod.ts"
+  }
+}
