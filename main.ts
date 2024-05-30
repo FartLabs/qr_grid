@@ -17,18 +17,21 @@ function parseGenerateOptions(url: URL): GenerateOptions {
   const rows = rowsString ? parseInt(rowsString, 10) : 10;
   const columnsString = url.searchParams.get("columns");
   const columns = columnsString ? parseInt(columnsString, 10) : 5;
-  const gapString = url.searchParams.get("gap");
-  const gap = gapString ? parseInt(gapString, 10) : 0;
   const sizeString = url.searchParams.get("size");
   const size = sizeString ? parseInt(sizeString, 10) : 40;
+  const gap = url.searchParams.get("gap") ?? "0";
+  const padding = url.searchParams.get("padding") ?? "0";
   return {
     amount,
     rows,
     columns,
     gap,
-    qrcode: async () =>
+    padding,
+    size,
+    data: () => crypto.randomUUID(),
+    qrcode: async (data) =>
       (await qrcode(
-        crypto.randomUUID(),
+        data,
         {
           size,
           typeNumber: 0,
@@ -36,6 +39,10 @@ function parseGenerateOptions(url: URL): GenerateOptions {
           errorCorrectLevel: "H",
         },
       )) as unknown as string,
+    before: () =>
+      `<div style="display: flex; align-items: center; justify-content: center;">`,
+    after: (data) =>
+      `<span style="font-size: 0.5rem; margin-left: 0.5rem;">${data}</span></div>`,
   };
 }
 
@@ -43,9 +50,11 @@ function parseGenerateOptions(url: URL): GenerateOptions {
  * generate generates a document of QR codes.
  */
 async function generate(options: GenerateOptions) {
-  const codes = await Promise.all(
-    Array.from({ length: options.amount }, (_, i) => options.qrcode(i)),
+  const data = Array.from(
+    { length: options.amount },
+    (_, i) => options.data(i),
   );
+  const codes = await Promise.all(data.map((data) => options.qrcode(data)));
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -61,25 +70,33 @@ async function generate(options: GenerateOptions) {
         display: grid;
         grid-template-columns: repeat(${options.columns}, 1fr);
         grid-template-rows: repeat(${options.rows}, 1fr);
-        height: 100vh;
-        grid-gap: ${options.gap}px;
+        max-height: 100vh;
+        grid-gap: ${options.gap};
         justify-items: center;
         align-items: center;
         padding: 0;
+        padding: ${options.padding};
       }
 
       img {
-        width: auto;
-        height: auto;
+        width: ${options.size}px;
+        height: ${options.size}px;
+        image-rendering: pixelated;
       }
     </style>
 </head>
 <body>
    ${
-    partition(codes, options.rows * options.columns)
-      .map((page) =>
+    partition(data, options.rows * options.columns)
+      .map((page, i) =>
         `<div class="page">${
-          page.map((code) => `<img src="${code}" alt="QR Code">`).join("")
+          page.map((code) =>
+            `${
+              options.before !== undefined ? options.before(code) : ""
+            }<img src="${codes[i]}" alt="QR Code" title="${code}">${
+              options.after !== undefined ? options.after(code) : ""
+            }`
+          ).join("")
         }</div>`
       ).join("")
   }
@@ -94,8 +111,13 @@ export interface GenerateOptions {
   amount: number;
   rows: number;
   columns: number;
-  gap: number;
-  qrcode: (i: number) => Promise<string>;
+  gap: string;
+  padding: string;
+  size: number;
+  data(i: number): string;
+  qrcode: (data: string) => Promise<string>;
+  before?: (data: string) => string;
+  after?: (data: string) => string;
 }
 
 /**
